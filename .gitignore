@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Secrets
+.env
+
+# SQLite
+*.db
+*.sqlite
+*.sqlite3
+
+# Frontend dependencies
+frontend/node_modules/
+frontend/dist/
+
+# Editor and OS
+.DS_Store
+.vscode/

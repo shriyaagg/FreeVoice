@@ -1,0 +1,7 @@
+max_extension_days: 14
+max_discount_percent: 5
+max_calls_per_invoice: 3
+calling_hours:
+  start: "09:00"
+  end: "20:00"
+collectable_statuses: [SENT, UNPAID, PARTIALLY_PAID]
