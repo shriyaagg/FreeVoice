@@ -11,7 +11,7 @@ export default function InvoiceGrid({ rows, selectedId, onCall }) {
       { field: "client_name", headerName: "Client", minWidth: 130, flex: 1 },
       {
         headerName: "Amount",
-        minWidth: 110,
+        minWidth: 140,
         valueGetter: (p) => `${p.data.amount} ${p.data.currency}`,
       },
       {
@@ -22,7 +22,7 @@ export default function InvoiceGrid({ rows, selectedId, onCall }) {
         cellStyle: (p) =>
           p.value >= 30 ? { color: "#b42318", fontWeight: 600 } : null,
       },
-      { field: "status", headerName: "PayPal status", minWidth: 120 },
+      { field: "status", headerName: "PayPal status", minWidth: 130 },
       {
         headerName: "Call outcome",
         minWidth: 150,
@@ -47,9 +47,13 @@ export default function InvoiceGrid({ rows, selectedId, onCall }) {
       },
       {
         headerName: "",
-        width: 110,
+        width: 120,
+        minWidth: 120,
+        maxWidth: 120,
+        suppressSizeToFit: true,
         sortable: false,
-        cellStyle: { padding: "0 6px" },
+        resizable: false,
+        cellStyle: { padding: "0 8px" },
         cellRenderer: (p) => (
           <button disabled={p.data.paid} onClick={() => onCall(p.data)}>
             {p.data.paid ? "Paid" : "Open"}
@@ -61,7 +65,7 @@ export default function InvoiceGrid({ rows, selectedId, onCall }) {
   );
 
   return (
-    <div style={{ height: 330 }}>
+    <div style={{ height: 420 }}>
       <AgGridReact
         rowData={rows}
         columnDefs={columnDefs}
