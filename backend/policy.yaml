@@ -5,3 +5,6 @@ calling_hours:
   start: "09:00"
   end: "20:00"
 collectable_statuses: [SENT, UNPAID, PARTIALLY_PAID]
+ring_timeout_seconds: 20
+retry_delay_minutes: [0.5, 1]
+max_followups: 2

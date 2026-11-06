@@ -24,6 +24,7 @@ GOODBYES = {
     "paid_now": "Thank you for the payment. Have a great day.",
     "refused": "Understood, I'll pass this on to the freelancer. Take care.",
     "no_answer": "I'll try again later. Goodbye.",
+    "disputed": "I'm sorry about that. I'll pass this to the freelancer so they can look into it. Goodbye.",
 }
 
 
@@ -37,6 +38,9 @@ def as_text(content) -> str:
 
 def agent_node(state: dict) -> dict:
     messages = list(state.get("messages", []))
+    system = SystemMessage(
+            content=system_prompt(state["current"], state["tone"], state.get("history", ""))
+        )
     new = []
     if not messages:
         opener = HumanMessage(content="(The client picked up the phone.)")
@@ -48,6 +52,7 @@ def agent_node(state: dict) -> dict:
         system = SystemMessage(content=system_prompt(state["current"], state["tone"]))
         reply = llm.invoke([system, *messages])
     return {"messages": [*new, reply]}
+
 
 
 def tools_node(state: dict) -> dict:
@@ -70,12 +75,15 @@ def tools_node(state: dict) -> dict:
             update["pending_request"] = None
         if name == "end_call":
             update["call_done"] = True
+
             update["outcome"] = args.get("outcome", "")
             if args.get("outcome") == "needs_approval" and args.get("request_type"):
                 update["pending_request"] = {
                     "type": args["request_type"],
                     "value": args.get("request_value"),
                 }
+            if args.get("outcome") == "disputed":
+                update["dispute_reason"] = args.get("reason", "")
 
         results.append(
             ToolMessage(

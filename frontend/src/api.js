@@ -13,7 +13,19 @@ async function req(path, options = {}) {
 }
 
 export const getDashboard = () => req("/dashboard");
-export const getCalls = (status) => req(`/calls${status ? `?status=${status}` : ""}`);
+export const getCalls = (status, outcome) => {
+  const q = new URLSearchParams();
+  if (status) q.set("status", status);
+  if (outcome) q.set("outcome", outcome);
+  const s = q.toString();
+  return req(`/calls${s ? `?${s}` : ""}`);
+};
+export const resolveDispute = (id) =>
+  req(`/calls/${id}/resolve-dispute`, { method: "POST" });
+export const getAnalytics = () => req("/analytics");
+export const getHealth = () => req("/health");
+export const expirePromise = (invoiceId) =>
+  req(`/demo/expire-promise/${invoiceId}`, { method: "POST" });
 export const getCall = (id) => req(`/calls/${id}`);
 export const getPublicCall = (id) => req(`/calls/${id}/public`);
 export const startCall = (invoice_id) =>
@@ -25,3 +37,4 @@ export const decide = (id, approved) =>
 
 export const createInvoice = (body) =>
   req("/invoices", { method: "POST", body: JSON.stringify(body) });
+export const answerCall = (id) => req(`/calls/${id}/answer`, { method: "POST" });

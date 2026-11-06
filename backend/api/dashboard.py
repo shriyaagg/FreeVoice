@@ -1,11 +1,9 @@
-from fastapi import APIRouter
+import httpx
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
 from backend import db
 from backend.paypal import client
-
-import httpx
-from fastapi import HTTPException
-from pydantic import BaseModel
 
 router = APIRouter(tags=["dashboard"])
 PAID_STATUSES = {"PAID", "MARKED_AS_PAID"}
@@ -23,18 +21,23 @@ def dashboard():
             continue
         call = latest.get(inv["id"]) or {}
         paid = inv["status"] in PAID_STATUSES or inv["id"] in webhook_paid
+        if paid and inv["id"] not in webhook_paid:
+            db.mark_paid(inv["id"])
         rows.append({
             **inv,
             "days_overdue": 0 if paid else inv["days_overdue"],
             "paid": paid,
             "last_call_id": call.get("call_id"),
             "call_status": call.get("status"),
+            "kind": call.get("kind"),
+            "attempts": call.get("attempts"),
             "outcome": call.get("outcome"),
             "promise_date": call.get("promise_date"),
-            "owner_decision": call.get("owner_decision"),
-            "escalation": call.get("escalation"),
+            "summary": call.get("summary"),
+            "dispute_reason": call.get("dispute_reason"),
         })
     return rows
+
 
 class NewInvoice(BaseModel):
     first_name: str

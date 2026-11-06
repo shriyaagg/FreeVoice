@@ -28,3 +28,6 @@ class CollectionState(TypedDict, total=False):
     target_invoice_id: str | None
     outcome: str
     promise_date: str | None
+    history: str
+    broken_promise: bool
+    dispute_reason: str

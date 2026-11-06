@@ -17,6 +17,10 @@ from backend.agent.nodes.scan import scan_node
 from backend.agent.state import CollectionState
 from backend.agent.tools import check_policy
 
+from backend.db import DB_PATH
+
+
+
 def plan_node(state: CollectionState) -> dict:
     overdue = state.get("overdue", [])
     target = state.get("target_invoice_id")
@@ -27,6 +31,8 @@ def plan_node(state: CollectionState) -> dict:
     invoice = overdue[0]
     d = invoice["days_overdue"]
     tone = "friendly" if d < 15 else "firm" if d < 30 else "urgent"
+    if state.get("broken_promise") and tone == "friendly":
+        tone = "firm"
     return {"current": invoice, "tone": tone}
 
 
@@ -64,15 +70,15 @@ def post_call_node(state: CollectionState) -> dict:
         days = int(req.get("value") or 0)
         if approved and req.get("type") == "extension_days" and days:
             new_date = date.today() + timedelta(days=days)
-            text = (f"Hi {name}, good news, the freelancer approved your request. "
+            text = (f"Thanks for holding, {name}. Good news, the freelancer approved your request. "
                     f"Can you confirm you'll pay invoice {inv['number']} by "
                     f"{new_date.strftime('%B %d')}?")
         elif approved:
-            text = f"Hi {name}, good news, the freelancer approved your request."
+            text = f"Thanks for holding, {name}. Good news, the freelancer approved your request."
         else:
             limit = config.POLICY["max_extension_days"]
-            text = (f"Hi {name}, the freelancer couldn't approve that. "
-                    f"They can offer up to {limit} days instead. Would that work for you?")
+            text = (f"Thanks for holding, {name}. The freelancer couldn't approve that, "
+                    f"but they can offer up to {limit} days. Would that work for you?")
         update.update(
             messages=[AIMessage(content=text)],
             awaiting_reply=True,
@@ -120,8 +126,10 @@ def build_graph(checkpointer):
     )    
     return b.compile(checkpointer=checkpointer)
 
+
+
 def get_graph():
-    conn = sqlite3.connect("calls.db", check_same_thread=False)
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     return build_graph(SqliteSaver(conn))
 
 graph = build_graph(MemorySaver())

@@ -95,3 +95,14 @@ def normalize(raw: dict) -> dict:
         "due_date": due,
         "days_overdue": max(days, 0),
     }
+
+def get_invoice(invoice_id: str) -> dict:
+    return normalize(_request("GET", f"/v2/invoicing/invoices/{invoice_id}"))
+
+
+def send_reminder(invoice_id: str, note: str):
+    _request(
+        "POST",
+        f"/v2/invoicing/invoices/{invoice_id}/remind",
+        json={"subject": "Payment reminder", "note": note, "send_to_invoicer": False},
+    )

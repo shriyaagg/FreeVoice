@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { getDashboard } from "./api";
+import Analytics from "./components/Analytics";
 import ApprovalQueue from "./components/ApprovalQueue";
-import InvoiceGrid from "./components/InvoiceGrid";
 import CallMonitor from "./components/CallMonitor";
+import InvoiceGrid from "./components/InvoiceGrid";
+import NewInvoice from "./components/NewInvoice";
 
 const OPEN = ["SENT", "UNPAID", "PARTIALLY_PAID"];
 const money = (n) =>
@@ -10,7 +12,7 @@ const money = (n) =>
 
 export default function App() {
   const [rows, setRows] = useState([]);
-  const [selected, setSelected] = useState(null);
+  const [selectedId, setSelectedId] = useState(null);
   const [error, setError] = useState("");
 
   const refresh = useCallback(async () => {
@@ -22,12 +24,15 @@ export default function App() {
     }
   }, []);
 
+  const pick = useCallback((row) => setSelectedId(row.id), []);
+
   useEffect(() => {
     refresh();
     const t = setInterval(refresh, 6000);
     return () => clearInterval(t);
   }, [refresh]);
 
+  const selected = rows.find((r) => r.id === selectedId) || null;
   const open = rows.filter(
     (r) => !r.paid && r.days_overdue > 0 && OPEN.includes(r.status)
   );
@@ -55,14 +60,18 @@ export default function App() {
 
       {error && <p className="error">Backend error: {error}</p>}
 
+      <NewInvoice onCreated={refresh} />
+
       <div className="card">
-        <InvoiceGrid rows={rows} selectedId={selected?.id} onCall={setSelected} />
+        <InvoiceGrid rows={rows} selectedId={selectedId} onCall={pick} />
       </div>
 
       <div className="cols">
         <CallMonitor invoice={selected} onChange={refresh} />
         <ApprovalQueue onChange={refresh} />
       </div>
+
+      <Analytics />
     </div>
   );
 }

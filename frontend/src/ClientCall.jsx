@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { getPublicCall, sendMessage } from "./api";
+import { answerCall, getPublicCall, sendMessage } from "./api";
 import { useSpeech } from "./hooks/useSpeech";
+
+const WAITING = ["ringing", "missed"];
 
 export default function ClientCall({ callId }) {
   const { supported, listening, speak, listen, stop } = useSpeech();
@@ -25,6 +27,15 @@ export default function ClientCall({ callId }) {
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [call]);
+
+  useEffect(() => {
+    if (answered || !WAITING.includes(call?.status)) return;
+    const t = setInterval(
+      () => getPublicCall(callId).then(setCall).catch(() => {}),
+      2000
+    );
+    return () => clearInterval(t);
+  }, [answered, call?.status, callId]);
 
   useEffect(() => {
     if (!answered || call?.status !== "awaiting_owner") return;
@@ -52,12 +63,25 @@ export default function ClientCall({ callId }) {
   }
 
   async function answer() {
-    setAnswered(true);
+    setBusy(true);
+    setError("");
     try {
+      await answerCall(callId);
+      setAnswered(true);
+      seen.current = 0;
       await sync();
     } catch (e) {
       setError(e.message);
+    } finally {
+      setBusy(false);
     }
+  }
+
+  async function rejoin() {
+    const c = await getPublicCall(callId);
+    seen.current = (c.transcript || []).length;
+    setCall(c);
+    setAnswered(true);
   }
 
   async function send(msg) {
@@ -75,13 +99,28 @@ export default function ClientCall({ callId }) {
     }
   }
 
-  const done = call?.status === "done";
+  const status = call?.status;
+  const done = status === "done";
+  const waiting = WAITING.includes(status);
+  const inProgress = ["awaiting_client", "awaiting_owner"].includes(status);
+
+  const title = answered
+    ? "On call"
+    : status === "ringing"
+    ? "Incoming call"
+    : status === "missed"
+    ? "Missed call"
+    : status === "unreachable"
+    ? "We couldn't reach you"
+    : done
+    ? "Call ended"
+    : "Payment assistant";
 
   return (
     <div className="phone-wrap">
       <div className="phone">
         <div className="phone-head">
-          <h1>{answered ? "On call" : done ? "Call ended" : "Incoming call"}</h1>
+          <h1>{title}</h1>
           <p className="muted">
             Payment assistant, calling for your freelancer
             {call ? ` about invoice ${call.invoice_number}` : ""}
@@ -90,11 +129,38 @@ export default function ClientCall({ callId }) {
 
         {error && <p className="error">{error}</p>}
 
-        {!answered && call && !done && (
-          <button className="answer" onClick={answer}>
-            Answer
+        {!answered && waiting && (
+          <>
+            {status === "missed" && (
+              <div className="banner">
+                You missed a call (attempt {call.attempts}). We'll try again shortly,
+                or you can call back now.
+              </div>
+            )}
+            <button
+              className={`answer ${status === "ringing" ? "ringing" : ""}`}
+              onClick={answer}
+              disabled={busy}
+            >
+              {status === "ringing" ? "Answer" : "Call back"}
+            </button>
+          </>
+        )}
+
+        {!answered && inProgress && (
+          <button className="answer" onClick={rejoin}>
+            Rejoin call
           </button>
         )}
+
+        {!answered && status === "unreachable" && (
+          <div className="banner">
+            We tried a few times and couldn't reach you. A payment reminder was
+            sent to your email.
+          </div>
+        )}
+
+        {!answered && done && <div className="banner ok">This call has already ended.</div>}
 
         {answered && (
           <>
@@ -117,9 +183,8 @@ export default function ClientCall({ callId }) {
               <div ref={endRef} />
             </div>
 
-            {call?.status === "awaiting_owner" && (
-              <div className="banner">Please hold, the assistant is checking something...</div>
-            )}
+            {status === "awaiting_owner" && (
+              <div className="banner">Please hold, the assistant is checking with the freelancer...</div>            )}
             {done && (
               <div className="banner ok">
                 Call ended
@@ -127,7 +192,7 @@ export default function ClientCall({ callId }) {
               </div>
             )}
 
-            {call?.status === "awaiting_client" && (
+            {status === "awaiting_client" && (
               <div className="row">
                 <input
                   type="text"
@@ -147,10 +212,6 @@ export default function ClientCall({ callId }) {
               </div>
             )}
           </>
-        )}
-
-        {!answered && done && (
-          <div className="banner ok">This call has already ended.</div>
         )}
       </div>
     </div>

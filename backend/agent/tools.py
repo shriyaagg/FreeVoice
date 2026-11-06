@@ -56,10 +56,11 @@ def all_tools():
     return [*paypal_tools(), check_policy, record_promise]
 
 @tool
-def end_call(outcome: str, request_type: str = "", request_value: float = 0) -> str:
-    """End the call. outcome is one of: paid_now, promised, needs_approval, refused, no_answer.
+def end_call(outcome: str, request_type: str = "", request_value: float = 0, reason: str = "") -> str:
+    """End the call. outcome is one of: paid_now, promised, needs_approval, refused, disputed, no_answer.
     If outcome is needs_approval, also set request_type ('extension_days' or
-    'discount_percent') and request_value (the number the client asked for)."""
+    'discount_percent') and request_value (the number the client asked for).
+    If outcome is disputed, set reason to a short description of the client's complaint."""
     return f"Call ended with outcome {outcome}"
 
 SAFE_PAYPAL_KEYWORDS = ("reminder", "qr")

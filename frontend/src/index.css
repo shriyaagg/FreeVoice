@@ -37,3 +37,10 @@ a.btnlink { padding: 8px 14px; border-radius: 8px; border: 1px solid #d0d5dd; te
 .chip.wait { background: #fffaeb; color: #b54708; }
 .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
 .form-grid input { padding: 8px 10px; border: 1px solid #d0d5dd; border-radius: 8px; font-size: 14px; }
+@keyframes ring { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+.answer.ringing { animation: ring 1s infinite; }
+ .approval.dispute { border-color: #fda29b; background: #fffbfa; }
+.bars { margin-top: 12px; }
+.bar-row { display: grid; grid-template-columns: 150px 1fr 30px; gap: 10px; align-items: center; font-size: 14px; margin: 6px 0; }
+.bar-track { background: #f2f4f7; border-radius: 6px; height: 12px; }
+.bar-fill { background: #0070ba; height: 12px; border-radius: 6px; }

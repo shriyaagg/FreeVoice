@@ -7,41 +7,49 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 export default function InvoiceGrid({ rows, selectedId, onCall }) {
   const columnDefs = useMemo(
     () => [
-      { field: "number", headerName: "Invoice", width: 100 },
-      { field: "client_name", headerName: "Client", flex: 1, minWidth: 140 },
+      { field: "number", headerName: "Invoice", minWidth: 90, maxWidth: 110 },
+      { field: "client_name", headerName: "Client", minWidth: 130, flex: 1 },
       {
         headerName: "Amount",
-        width: 130,
+        minWidth: 110,
         valueGetter: (p) => `${p.data.amount} ${p.data.currency}`,
       },
       {
         field: "days_overdue",
         headerName: "Days overdue",
-        width: 140,
+        minWidth: 150,
         sort: "desc",
         cellStyle: (p) =>
           p.value >= 30 ? { color: "#b42318", fontWeight: 600 } : null,
       },
-      { field: "status", headerName: "PayPal status", width: 150 },
+      { field: "status", headerName: "PayPal status", minWidth: 120 },
       {
         headerName: "Call outcome",
-        width: 150,
-        valueGetter: (p) => p.data.outcome || p.data.call_status || "none",
-      },
-      { field: "promise_date", headerName: "Promise", width: 120 },
-      {
-        headerName: "Owner review",
-        width: 230,
+        minWidth: 150,
         valueGetter: (p) => {
-          const { escalation, owner_decision } = p.data;
-          if (!escalation) return "";
-          return `${escalation}: ${owner_decision || "pending"}`;
+          const { outcome, call_status, attempts, kind } = p.data;
+          const tag = kind === "follow_up" ? "Follow-up: " : "";
+          if (call_status === "ringing") return `${tag}Ringing (try ${attempts})`;
+          if (call_status === "missed") return `${tag}Missed (try ${attempts})`;
+          if (call_status === "unreachable") return "Unreachable";
+          if (call_status === "awaiting_client") return `${tag}On call`;
+          if (call_status === "awaiting_owner") return "Needs approval";
+          return outcome || "none";
         },
+      },
+      { field: "promise_date", headerName: "Promise", minWidth: 110 },
+      {
+        field: "summary",
+        headerName: "Summary",
+        minWidth: 240,
+        flex: 2,
+        tooltipField: "summary",
       },
       {
         headerName: "",
-        width: 100,
+        width: 110,
         sortable: false,
+        cellStyle: { padding: "0 6px" },
         cellRenderer: (p) => (
           <button disabled={p.data.paid} onClick={() => onCall(p.data)}>
             {p.data.paid ? "Paid" : "Open"}
@@ -58,10 +66,14 @@ export default function InvoiceGrid({ rows, selectedId, onCall }) {
         rowData={rows}
         columnDefs={columnDefs}
         defaultColDef={{ sortable: true, resizable: true }}
+        autoSizeStrategy={{ type: "fitGridWidth" }}
+        tooltipShowDelay={300}
         getRowId={(p) => p.data.id}
         getRowStyle={(p) =>
           p.data.paid
             ? { background: "#ecfdf3" }
+            : p.data.outcome === "disputed"
+            ? { background: "#fffaeb" }
             : p.data.id === selectedId
             ? { background: "#eef4ff" }
             : undefined

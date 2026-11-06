@@ -19,3 +19,5 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 with open(Path(__file__).parent / "policy.yaml") as f:
     POLICY = yaml.safe_load(f)
+
+DEMO_MODE = os.getenv("DEMO_MODE", "0") == "1"

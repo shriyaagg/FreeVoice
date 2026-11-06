@@ -16,6 +16,10 @@ def _call(name: str, **args) -> dict:
     return {"name": name, "args": args, "id": f"mock-{_counter}", "type": "tool_call"}
 
 
+def _bye(text: str) -> str:
+    return f"{text} I'm ending the call now, goodbye."
+
+
 def _parse_days(low: str) -> int | None:
     m = re.search(r"(\d+|one|two|three|four|five)\s*(?:more\s*)?(day|week)s?", low)
     if not m:
@@ -36,7 +40,7 @@ def _day_of_month(day: int) -> date:
 
 def _promise(inv: dict, d: date) -> AIMessage:
     return AIMessage(
-        content=f"Thank you, I've noted {d.strftime('%B %d')}. Goodbye.",
+        content=_bye(f"Thank you, I've noted {d.strftime('%B %d')}."),
         tool_calls=[
             _call("record_promise", invoice_id=inv["id"], promise_date=d.isoformat()),
             _call("end_call", outcome="promised"),
@@ -53,6 +57,12 @@ def mock_reply(state: dict, messages: list) -> AIMessage:
     low = said.lower() if isinstance(said, str) else ""
 
     if not any(m.type == "ai" for m in messages):
+        if state.get("broken_promise"):
+            return AIMessage(content=(
+                f"Hello {name}, it's the AI assistant calling again about invoice "
+                f"{inv['number']}. I don't see the payment you promised yet. "
+                "Could you give me a new date?"
+            ))
         return AIMessage(content=(
             f"Hello {name}, I am an AI assistant calling on behalf of the freelancer "
             f"regarding invoice {inv['number']} for {inv['amount']} {inv['currency']}, "
@@ -60,10 +70,24 @@ def mock_reply(state: dict, messages: list) -> AIMessage:
             "Can you pay today, or give me a firm date?"
         ))
 
+    if re.search(
+        r"(disput|never (got|received|delivered)|not delivered|wasn't delivered|overcharg|wrong amount|didn't (get|receive)|not (satisfied|happy)|unhappy|dissatisfied|(poor|bad) (work|quality)|quality of)",
+        low,
+    ):
+        return AIMessage(
+            content=_bye("I'm sorry to hear that. I'll pass this to the freelancer so they can look into it."),
+            tool_calls=[_call("end_call", outcome="disputed", reason=said[:120])],
+        )
+
+    if re.search(r"(supervisor|manager|my boss|finance team|approval from)", low):
+        return AIMessage(
+            content="Understood. When do you expect to hear back from them, so I can note a date?"
+        )
+
     if state.get("followup_sent"):
         if re.search(r"\b(no|can't|cannot|won't|not)\b", low):
             return AIMessage(
-                content="Understood, I'll pass that on to the freelancer. Goodbye.",
+                content=_bye("Understood, I'll pass that on to the freelancer."),
                 tool_calls=[_call("end_call", outcome="refused")],
             )
         default = int((state.get("pending_request") or {}).get("value") or limit) \
@@ -72,7 +96,7 @@ def mock_reply(state: dict, messages: list) -> AIMessage:
 
     if re.search(r"(won't pay|refuse|not paying|can't pay)", low):
         return AIMessage(
-            content="Understood, I'll let the freelancer know. Goodbye.",
+            content=_bye("Understood, I'll let the freelancer know."),
             tool_calls=[_call("end_call", outcome="refused")],
         )
 
@@ -80,7 +104,7 @@ def mock_reply(state: dict, messages: list) -> AIMessage:
     if days is not None:
         if days > limit:
             return AIMessage(
-                content="I can't approve that myself. I'll check with the freelancer and get back to you. Thanks for your time.",
+                content="I can't approve that myself. Could you hold for a moment while I check with the freelancer?",
                 tool_calls=[_call("end_call", outcome="needs_approval",
                                   request_type="extension_days", request_value=float(days))],
             )
@@ -92,7 +116,7 @@ def mock_reply(state: dict, messages: list) -> AIMessage:
 
     if re.search(r"\b(now|today|right away|paying)\b", low):
         return AIMessage(
-            content="Great, thank you. I'll send the payment link now. Goodbye.",
+            content=_bye("Great, thank you. I'll send the payment link now."),
             tool_calls=[_call("end_call", outcome="paid_now")],
         )
 
