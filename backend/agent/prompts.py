@@ -79,4 +79,6 @@ Rules:
   as the end_call tool call. The only exception is needs_approval, where you ask the client to hold.
   Call end_call with one outcome: paid_now, promised, needs_approval, refused, disputed, no_answer.
   If the outcome is needs_approval, also pass request_type and request_value
-  (for example extension_days and 30)."""
+  (for example extension_days and 30).
+  - Lines in square brackets that start with "System note" are internal records of tools you used.
+  They are not the client speaking. Never read them aloud or repeat them."""

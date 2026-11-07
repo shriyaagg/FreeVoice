@@ -1,4 +1,5 @@
 import json
+import re
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -19,13 +20,15 @@ if not config.MOCK_LLM:
     ).bind_tools(TOOLS)
 
 GOODBYES = {
-    "needs_approval": "I'll check with the freelancer and get back to you. Thanks for your time.",
-    "promised": "Thank you, I've noted that. Have a great day.",
-    "paid_now": "Thank you for the payment. Have a great day.",
-    "refused": "Understood, I'll pass this on to the freelancer. Take care.",
-    "no_answer": "I'll try again later. Goodbye.",
-    "disputed": "I'm sorry about that. I'll pass this to the freelancer so they can look into it. Goodbye.",
+    "needs_approval": "Could you hold for a moment while I check with the freelancer?",
+    "promised": "Thank you, I've noted that. I'm ending the call now, goodbye.",
+    "paid_now": "Thank you for the payment. I'm ending the call now, goodbye.",
+    "refused": "Understood, I'll pass this on to the freelancer. I'm ending the call now, goodbye.",
+    "disputed": "I'm sorry about that. I'll pass this to the freelancer so they can look into it. I'm ending the call now, goodbye.",
+    "no_answer": "I'll try again later. I'm ending the call now, goodbye.",
 }
+
+NOTE = re.compile(r"\[System note[^\]]*\]", re.I)
 
 
 def as_text(content) -> str:
@@ -36,11 +39,37 @@ def as_text(content) -> str:
     )
 
 
+def to_model_messages(messages: list) -> list:
+    """Rewrite history as plain text so Gemini never needs thought signatures."""
+    out = []
+    for m in messages:
+        if isinstance(m, ToolMessage):
+            new = HumanMessage(
+                content=f"[System note: result of {m.name}: {m.content}]"
+            )
+        elif isinstance(m, AIMessage):
+            text = as_text(m.content).strip()
+            if m.tool_calls:
+                calls = "; ".join(
+                    f"{c['name']}({json.dumps(c['args'], default=str)})"
+                    for c in m.tool_calls
+                )
+                text = f"{text}\n[System note: you called {calls}]".strip()
+            if not text:
+                continue
+            new = AIMessage(content=text)
+        else:
+            new = HumanMessage(content=as_text(m.content))
+
+        if out and type(out[-1]) is type(new):
+            out[-1] = type(new)(content=f"{out[-1].content}\n{new.content}")
+        else:
+            out.append(new)
+    return out
+
+
 def agent_node(state: dict) -> dict:
     messages = list(state.get("messages", []))
-    system = SystemMessage(
-            content=system_prompt(state["current"], state["tone"], state.get("history", ""))
-        )
     new = []
     if not messages:
         opener = HumanMessage(content="(The client picked up the phone.)")
@@ -49,10 +78,12 @@ def agent_node(state: dict) -> dict:
     if config.MOCK_LLM:
         reply = mock_reply(state, messages)
     else:
-        system = SystemMessage(content=system_prompt(state["current"], state["tone"]))
-        reply = llm.invoke([system, *messages])
+        system = SystemMessage(
+            content=system_prompt(state["current"], state["tone"], state.get("history", ""))
+        )
+        reply = llm.invoke([system, *to_model_messages(messages)])
+        reply.content = NOTE.sub("", as_text(reply.content)).strip()
     return {"messages": [*new, reply]}
-
 
 
 def tools_node(state: dict) -> dict:
@@ -75,7 +106,6 @@ def tools_node(state: dict) -> dict:
             update["pending_request"] = None
         if name == "end_call":
             update["call_done"] = True
-
             update["outcome"] = args.get("outcome", "")
             if args.get("outcome") == "needs_approval" and args.get("request_type"):
                 update["pending_request"] = {
