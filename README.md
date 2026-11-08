@@ -69,8 +69,8 @@ flowchart TD
 
 **Sandbox test accounts** (for paying invoices):
 
-- Client (personal) account email: sb-67gbf53364564@personal.example.com
-- Password: iS*=32@x
+- Client (personal) account email: sb-8xtlb53495041@personal.example.com
+- Password: N#6?Eoj3
 
 ## Run it locally
 
