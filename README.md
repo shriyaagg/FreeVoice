@@ -9,6 +9,8 @@ Built for the PayPal AI Hackathon. This is a new project, started during the sub
 **Live demo:** https://collections-agent-web.onrender.com
 (The free server sleeps when idle, so the first load can take about a minute.)
 
+**Youtube Link:**https://youtu.be/2jm-ixPdiRA
+
 ## What it does
 
 - **Finds overdue invoices** in the PayPal sandbox and picks a tone based on how late they are (friendly, firm, urgent).
